@@ -1,7 +1,6 @@
 <template>
 <div>
-  <flow-left-tool></flow-left-tool>
-  <div id="flowMainCont" class="flow-main-cont" ref="Cont" @click="toggleSelected">
+  <div id="flowMainCont" class="flow-main-cont" ref="Cont">
     <div style="width:2000px;height:1000px">
       <div 
       id="draw" 
@@ -20,10 +19,6 @@
           <foreignObject>
             <div v-show="showArrow && !isDragging" id="arrow" @mouseover="enterArrow" @mouseout="outArrow">
               <img src="~assets/arrow.png" alt="" :style="arrowStyle" class="arrow" draggable="false" data-direction="arrow">
-              <!-- <img src="~assets/arrow.png" alt="" :style="arrowStyle.t" class="arrow" draggable="false" data-direction="t">
-              <img src="~assets/arrow.png" alt="" :style="arrowStyle.b" class="arrow arrow-bottom" draggable="false" data-direction="b">
-              <img src="~assets/arrow.png" alt="" :style="arrowStyle.l" class="arrow arrow-left" draggable="false" data-direction="l">
-              <img src="~assets/arrow.png" alt="" :style="arrowStyle.r" class="arrow arrow-right" draggable="false" data-direction="r"> -->
             </div>
           </foreignObject>
           <g id="draw-line" style="cursor:row-resize;">
@@ -59,13 +54,12 @@
       </div>
     </div>
   </div>
-  <flow-right :target="tar" @onNewNode="handle($event)" @onUpdateNode="handle($event)"></flow-right>
+  <flow-right :target="tar" @onNewNode="nodeHandle($event)" @onUpdateNode="nodeHandle($event)"></flow-right>
   </div>
 </template>
 
 <script>
 import shapesMixin from "./shapes/shapesMixin.js";
-import flowLeftTool from "./FlowLeftTool";
 import flowRight from "./FlowRight";
 import { mapState, mapMutations } from "vuex";
 import ToolMenu from "./ToolMenu";
@@ -89,6 +83,9 @@ export default {
         isFirstNode: true,
         prevNode: "",
         startNode: "",
+        startCoor: {
+          // left top
+        },
         // type: 'StraightLine',
         type: "",
         lineStyle: {
@@ -116,8 +113,7 @@ export default {
   },
   components: {
     ToolMenu,
-    flowRight,
-    flowLeftTool
+    flowRight
   },
   computed: {
     ...mapState("flow", [
@@ -143,22 +139,22 @@ export default {
       let { width, height, top, left } = this.clickInfo;
       let w = width / 2;
       let h = height / 2;
-        return {
-          nw: { x: left - w, y: top - h },
-          n: { x: left, y: top - h },
-          ne: { x: left * 1 + w, y: top - h },
-          w: { x: left - w, y: top },
-          e: { x: left * 1 + w, y: top },
-          sw: { x: left - w, y: top * 1 + h },
-          s: { x: left, y: top * 1 + h },
-          se: { x: left * 1 + w, y: top * 1 + h },
-          rect: {
-            w: width,
-            h: height,
-            x: left - w,
-            y: top - h
-          }
+      return {
+        nw: { x: left - w, y: top - h },
+        n: { x: left, y: top - h },
+        ne: { x: left * 1 + w, y: top - h },
+        w: { x: left - w, y: top },
+        e: { x: left * 1 + w, y: top },
+        sw: { x: left - w, y: top * 1 + h },
+        s: { x: left, y: top * 1 + h },
+        se: { x: left * 1 + w, y: top * 1 + h },
+        rect: {
+          w: width,
+          h: height,
+          x: left - w,
+          y: top - h
         }
+      };
     }
   },
   directives: {
@@ -182,7 +178,7 @@ export default {
       el.onmousedown = ev => {
         if (_this.selLineType === "Mouse") {
           _this.SEL_NODENAME(ev.target.localName); // 拖拽函数
-          if (ev.buttons === 2) {
+          if (ev.button === 2) {
             return;
           }
           clearTimeout(_this.timer);
@@ -274,58 +270,61 @@ export default {
     },
     line(el, binding, vnode) {
       let _this = vnode.context;
-      // el.oncontextmenu = ev => {
-      //   ev.preventDefault();
-      //   _this.visible = true;
-      //   let x = ev.offsetX;
-      //   let y = ev.offsetY;
-      //   _this.menuInfo.top = `${y}px`;
-      //   _this.menuInfo.left = `${x}px`;
-      //   _this.menuInfo.selType = el.id.replace(/-.*/g, "");
-      //   _this.menuInfo.id = el.id;
-      // };
-      // el.onclick = ev => {
-      //   if (_this.selLineType === "Mouse") {
-      //     _this.clickInfo = _this.deepCopy(_this.lineData[el.id]);
-      //     _this.clickInfo.lineStyle.stroke = "#00a8ff";
-      //     _this.clickInfo.lineStyle["stroke-dasharray"] = "3 3";
-      //     _this.showLineSet = true;
-      //   }
-      // };
-      // el.onmousedown = ev => {
-      //   if (_this.selLineType === "Mouse") {
-      //     _this.lineDrawing = true;
-      //     _this.drawLineInfo.lineStyle.path = "";
-      //   }
-      // };
-      // el.ondblclick = ev => {
-      //   _this.editable = true;
-      //   let editor = el.querySelector(".line-text");
-      //   el.querySelector("foreignObject").setAttribute("pointer-events", "all");
-      //   editor.focus();
-      //   let fn = () => {
-      //     let text = editor.innerHTML;
-      //     let result = _this.deepCopy(_this.lineData[el.id]);
-      //     result.text = text;
-      //     _this.UPDATE_LINE({ [el.id]: result });
-      //     _this.editable = false;
-      //     document.querySelector(".line-text").removeEventListener("blur", fn);
-      //   };
-      //   document.querySelector(".line-text").addEventListener("blur", fn);
-      // };
+      el.oncontextmenu = ev => {
+        ev.preventDefault();
+        _this.visible = true;
+        let x = ev.offsetX;
+        let y = ev.offsetY;
+        _this.menuInfo.top = `${y}px`;
+        _this.menuInfo.left = `${x}px`;
+        _this.menuInfo.selType = el.id.replace(/-.*/g, "");
+        _this.menuInfo.id = el.id;
+      };
+      el.onclick = ev => {
+        _this.showArrow = false;
+        _this.drawLineEnd();
+        if (_this.selLineType === "Mouse") {
+          _this.SEL_NODENAME(ev.target.localName);
+          _this.UPDATE_NODECOORDINATE({
+            x: {
+              x1: _this.lineData[el.id].lineStyle.x1,
+              y1: _this.lineData[el.id].lineStyle.y1
+            },
+            y: {
+              x2: _this.nodeData[_this.lineData[el.id].startNode].left,
+              y2: _this.nodeData[_this.lineData[el.id].startNode].top
+            }
+          });
+          _this.clickInfo = _this.deepCopy(_this.lineData[el.id]);
+          _this.clickInfo.lineStyle.stroke = "#00a8ff";
+          _this.clickInfo.lineStyle["stroke-dasharray"] = "3 3";
+          _this.showLineSet = true;
+        }
+      };
+      el.onmousedown = ev => {
+        if (_this.selLineType === "Mouse") {
+          _this.lineDrawing = true;
+          _this.drawLineInfo.lineStyle.path = "";
+        }
+      };
+      el.ondblclick = ev => {
+        _this.editable = true;
+        let editor = el.querySelector(".line-text");
+        el.querySelector("foreignObject").setAttribute("pointer-events", "all");
+        editor.focus();
+        let fn = () => {
+          let text = editor.innerHTML;
+          let result = _this.deepCopy(_this.lineData[el.id]);
+          result.text = text;
+          _this.UPDATE_LINE({ [el.id]: result });
+          _this.editable = false;
+          document.querySelector(".line-text").removeEventListener("blur", fn);
+        };
+        document.querySelector(".line-text").addEventListener("blur", fn);
+      };
     }
   },
   methods: {
-    toggleSelected() {
-      if(this.selLineType === "Mouse"){
-        this.showArrow = false;
-      }else{
-        this.clickResize = false;
-      }
-    },
-    test() {
-      console.log(this.drawLineInfo.prevNode, this.drawLineInfo.startNode);
-    },
     ...mapMutations("flow", [
       "SEL_NODENAME",
       "SEL_NODETYPE",
@@ -335,7 +334,7 @@ export default {
       "UPDATE_LINE",
       "UPDATE_DRAWSTYLE"
     ]),
-    handle(val) {
+    nodeHandle(val) {
       switch (val.act) {
         case "new":
           if (this.selNodeType !== "") {
@@ -355,24 +354,34 @@ export default {
           }
           break;
         case "update":
-          this.deleteNode(this.clickElementId, true);
-          if (this.selNodeType !== "") {
-            let x = val.left;
-            let y = val.top;
-            let id = this.clickElementId;
-            let coor = { x: val.left, y: val.top };
-            this.UPDATE_NODECONTENT(val.content);
-            this.UPDATE_NODECOORDINATE(coor);
-            this.UPDATE_NODE({
-              [id]: {
-                id: this.clickElementId,
-                type: this.selNodeType,
-                transform: `translate(${x},${y})`,
-                top: y,
-                left: x,
-                text: val.content
-              }
-            });
+          console.log("update start");
+          if (val.type !== "line") {
+            this.deleteNode(this.clickElementId, true);
+            if (this.selNodeType !== "") {
+              let x = val.left;
+              let y = val.top;
+              let id = this.clickElementId;
+              let coor = { x: val.left, y: val.top };
+              this.UPDATE_NODECONTENT(val.content);
+              this.UPDATE_NODECOORDINATE(coor);
+              this.UPDATE_NODE({
+                [id]: {
+                  id: this.clickElementId,
+                  type: this.selNodeType,
+                  transform: `translate(${x},${y})`,
+                  top: y,
+                  left: x,
+                  text: val.content
+                }
+              });
+            } else {
+              this.UPDATE_LINE({
+                [id]: {
+                  text: val.content
+                }
+              });
+              console.log(this.lineData[id]);
+            }
           }
           break;
         default:
@@ -397,7 +406,7 @@ export default {
         this.SEL_NODENAME("");
       }
       this.showArrow = false;
-      this.showResize = false;
+      this.clickResize = false;
     },
     deleteHandle(ev) {
       let { id, selType } = this.menuInfo;
@@ -501,9 +510,6 @@ export default {
       },${endPoint.y}`;
     },
     drawLineStart(ev) {
-      if (ev.button === 2) {
-        this.drawLineEnd();
-      }
       this.lineDrawing = true;
       let { id, top, left } = this.selNodeInfo;
       let style = {};
@@ -534,15 +540,15 @@ export default {
       };
     },
     drawingLine(ev) {
-      let { id, top, left, width, height } = this.selNodeInfo;
-      if(this.drawLineInfo.prevNode === id){
-        this.drawLineEnd();
-        return
+      if (!this.lineDrawing) {
+        return;
       }
-      let RA = Math.atan(height / width);
-      let x = this.drawLineInfo.lineStyle.x1;
-      let y = this.drawLineInfo.lineStyle.y1;
-      let versus = Math.abs((y - top) / (x - left));
+      let { id, top, left, width, height } = this.selNodeInfo;
+      if (this.drawLineInfo.prevNode === id) {
+        this.drawLineEnd();
+        return;
+      }
+
       switch (this.selLineType) {
         case "LinePoly":
           let startP = this.drawLineInfo.lineStyle.points.split(" ")[0];
@@ -554,30 +560,22 @@ export default {
           );
           break;
         case "StraightLine":
-          if (Math.atan(versus) > RA) {
-            y - top > 0
-              ? (this.drawLineInfo.lineStyle.y2 = top + height / 2)
-              : (this.drawLineInfo.lineStyle.y2 = top * 1 - height / 2);
-            x - left > 0
-              ? (this.drawLineInfo.lineStyle.x2 =
-                  left * 1 + height / 2 / Math.atan(versus) - 15)
-              : (this.drawLineInfo.lineStyle.x2 =
-                  left * 1 + height / -2 / Math.atan(versus) + 15);
-          } else {
-            y - top > 0
-              ? (this.drawLineInfo.lineStyle.y2 =
-                  top - height / 2 * Math.atan(versus))
-              : (this.drawLineInfo.lineStyle.y2 =
-                  top * 1 + height / -2 * Math.atan(versus));
-            x - left > 0
-              ? (this.drawLineInfo.lineStyle.x2 = left * 1 + width / 2)
-              : (this.drawLineInfo.lineStyle.x2 = left - width / 2);
-          }
+          let result = this.equalLineEnd({
+            top,
+            left,
+            height,
+            width,
+            x: this.drawLineInfo.lineStyle.x1,
+            y: this.drawLineInfo.lineStyle.y1
+          });
+          this.drawLineInfo.lineStyle.y2 = result.t;
+          this.drawLineInfo.lineStyle.x2 = result.l;
           break;
         default:
           break;
       }
       this.drawLineInfo.startNode = id;
+      this.drawLineInfo.startCoor = { l: left, t: top };
       let data = this.deepCopy(this.drawLineInfo);
       let lineId = "line-" + new Date().getTime();
       data.id = lineId;
@@ -596,7 +594,6 @@ export default {
       };
     },
     drawLineEnd() {
-      console.log("3");
       this.drawLineInfo = {
         prevNode: "",
         startNode: "",
@@ -607,9 +604,8 @@ export default {
       this.lineDrawing = false;
     },
     updateLine() {
-      let { id, left, top, width, height } = this.selNodeInfo;
+      let { id, left, top, width, height, startCoor } = this.selNodeInfo;
       let data = {};
-
       for (var key in this.lineData) {
         if (this.lineData[key].prevNode === id) {
           // 获取开始端口坐标
@@ -630,12 +626,22 @@ export default {
               };
               break;
             case "StraightLine":
+              let result = this.equalLineEnd({
+                height,
+                width,
+                top: this.lineData[key].startCoor.t,
+                left: this.lineData[key].startCoor.l,
+                x: left,
+                y: top
+              });
               data[key] = {
                 ...this.lineData[key],
                 lineStyle: {
                   ...this.lineData[key].lineStyle,
                   x1: left,
-                  y1: top
+                  y1: top,
+                  x2: result.l,
+                  y2: result.t
                 }
               };
               break;
@@ -660,32 +666,21 @@ export default {
               };
               break;
             case "StraightLine":
-              let RA = Math.atan(height / width);
-              let x = this.lineData[key].lineStyle.x1;
-              let y = this.lineData[key].lineStyle.y1;
-              let versus = Math.abs((y - top) / (x - left));
-              let l, t;
-              if (Math.atan(versus) > RA) {
-                y - top > 0
-                  ? (t = top + height / 2)
-                  : (t = top * 1 - height / 2);
-                x - left > 0
-                  ? (l = left * 1 + height / 2 / Math.atan(versus) - 15)
-                  : (l = left * 1 + height / -2 / Math.atan(versus) + 15);
-              } else {
-                y - top > 0
-                  ? (t = top - height / 2 * Math.atan(versus))
-                  : (t = top * 1 + height / -2 * Math.atan(versus));
-                x - left > 0
-                  ? (l = left * 1 + width / 2)
-                  : (l = left - width / 2);
-              }
+              let result = this.equalLineEnd({
+                height,
+                width,
+                top,
+                left,
+                x: this.lineData[key].lineStyle.x1,
+                y: this.lineData[key].lineStyle.y1
+              });
               data[key] = {
                 ...this.lineData[key],
+                startCoor: { l: result.l, t: result.t },
                 lineStyle: {
                   ...this.lineData[key].lineStyle,
-                  x2: l,
-                  y2: t
+                  x2: result.l,
+                  y2: result.t
                 }
               };
               break;
@@ -706,40 +701,61 @@ export default {
         }
       }
       return t;
+    },
+    equalLineEnd(opt) {
+      let { x, y, height, width, top, left } = opt;
+      let RA = Math.atan(height / width);
+      let versus = Math.abs((y - top) / (x - left));
+      let l, t;
+      if (Math.atan(versus) > RA) {
+        y - top > 0 ? (t = top + height / 2) : (t = top * 1 - height / 2);
+        x - left > 0
+          ? (l = left * 1 + height / 2 / Math.atan(versus) - 15)
+          : (l = left * 1 + height / -2 / Math.atan(versus) + 15);
+      } else {
+        y - top > 0
+          ? (t = top - height / 2 * Math.atan(versus))
+          : (t = top * 1 + height / -2 * Math.atan(versus));
+        x - left > 0 ? (l = left * 1 + width / 2) : (l = left - width / 2);
+      }
+      return { l, t };
     }
   },
   mounted() {
     this.tar = this.$refs.Cont;
     document.addEventListener("mouseup", ev => {
+      if (this.drawingLine && ev.target.localName === "svg") {
+        this.drawLineEnd();
+      }
       if (this.selNodeType) {
         this.SEL_NODETYPE("");
       }
-      if (this.showResize || this.showLineSet) {
+      if (this.clickResize || this.showLineSet) {
         this.clickInfo = {};
         this.clickResize = false;
+        this.showArrow = false;
         this.showLineSet = false;
       }
     });
-    // 阻止右键事件
+    document.addEventListener("contextmenu", ev => {
+      ev.preventDefault();
+    });
+    // 阻止右键事件button
     document.addEventListener("keydown", ev => {
       if (this.clickInfo.id) {
+        let { id } = this.clickInfo;
         switch (ev.keyCode) {
           case 46:
-            let { id } = this.clickInfo;
             let selType = id.replace(/-.*/, "");
-            switch (selType) {
-              case "node":
-                this.deleteNode(id);
-                this.clickResize = false;
-                break;
-              case "line":
-                delete this.lineData[id];
-                this.UPDATE_NODE(this.lineData);
-                this.showLineSet = false;
-                this.clickInfo = {};
-                break;
-              default:
-                break;
+            if (selType === "node") {
+              this.deleteNode(id);
+              this.clickResize = false;
+            } else {
+              //line
+              delete this.lineData[id];
+              this.UPDATE_NODE(this.lineData);
+              this.showLineSet = false;
+              this.clickInfo = {};
             }
             break;
           default:
@@ -767,7 +783,6 @@ export default {
     height: 1500px;
     border: 1px solid #cacaca;
     background: url("../../assets/bg.svg") #fff -1px -1px;
-    // transform-origin: 50% 50%;
   }
   .shape-text {
     width: 400px;
@@ -790,15 +805,6 @@ export default {
     opacity: 0.3;
     z-index: 9999;
     cursor: move;
-    // &-bottom {
-    //   transform: rotate(-180deg);
-    // }
-    // &-left {
-    //   transform: rotate(-90deg);
-    // }
-    // &-right {
-    //   transform: rotate(90deg);
-    // }
     &:hover {
       opacity: 1;
     }

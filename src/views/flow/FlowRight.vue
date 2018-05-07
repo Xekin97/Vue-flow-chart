@@ -13,9 +13,17 @@
         <span class="title">节点属性</span>
         <div class="proSet">
             名称：<span>{{ SVGName }}</span><br><br>
-            L：<input :class="{cantClick: SVGName === ''}" type="number" v-model="coordinate.left" ref="hor" @input="updateNode" > <br>
-            T：<input :class="{cantClick: SVGName === ''}" type="number" v-model="coordinate.top" ref="ver" @input="updateNode" > <br>
-            内容：<br><textarea :class="{cantClick: SVGName === ''}" cols="20" rows="2" ref="updateContent" :value="nodeContents" @input="updateNode" ></textarea>
+            
+            <div class="line-form" v-if="clickType === 'line'">
+            起点：<span>({{ coordinate.x.x1 }}, {{coordinate.x.y1}})</span> <br>
+            终点：<span>({{ coordinate.y.x2 }}, {{coordinate.y.y2}})</span> <br>
+            </div>
+            <div class="node-form" v-else="clickType === 'node'">  
+            L：<input :class="{cantClick: SVGName === '' }" type="number" v-model="coordinate.x" ref="hor" @input="updateNode" > <br>
+            T：<input :class="{cantClick: SVGName === '' }" type="number" v-model="coordinate.y" ref="ver" @input="updateNode" > <br>
+            </div>
+
+            内容：<br><textarea :class="{cantClick: SVGName === '' }" cols="20" rows="2" ref="updateContent" :value="nodeContents" @input="updateNode" ></textarea>
         </div>
         <br>
         <span class="title">节点搜索</span>
@@ -38,6 +46,7 @@ export default {
       search: "",
       newHor: 0,
       newVer: 0,
+      clickType: "node",
       tab: "Start",
       tabs: [
         { label: "椭圆", type: "Start" },
@@ -51,14 +60,19 @@ export default {
       common(document.getElementById("flowMainCont"), this.search);
     },
     SVGName() {
+
       if (this.SVGName === "") {
         this.$refs.hor.setAttribute("disabled", "disabled");
         this.$refs.ver.setAttribute("disabled", "disabled");
         this.$refs.updateContent.setAttribute("disabled", "disabled");
+      } else if (this.SVGName === "直线") {
+        this.clickType = 'line';
+        this.$refs.updateContent.removeAttribute("disabled");
       } else {
+        this.clickType = 'node';
         this.$refs.hor.removeAttribute("disabled");
         this.$refs.ver.removeAttribute("disabled");
-        this.$refs.updateContent.removeAttribute("disabled", "disabled");
+        this.$refs.updateContent.removeAttribute("disabled");
       }
     },
     enterCoor() {
@@ -86,14 +100,26 @@ export default {
       return this.nodeContent;
     },
     coordinate() {
-      return { left: this.nodeCoordinate.x, top: this.nodeCoordinate.y };
+      return { x: this.nodeCoordinate.x, y: this.nodeCoordinate.y };
     },
     SVGName() {
-      return this.nodeName
-        ? this.nodeName === "rect"
-          ? "矩形"
-          : this.nodeName === "path" ? "菱形" : "椭圆"
-        : "";
+      if (this.nodeName) {
+        switch (this.nodeName) {
+          case "rect":
+            return "矩形";
+          case "path":
+            return "菱形";
+          case "ellipse":
+            return "椭圆";
+          case "line":
+            return "直线";
+          case "polyLine":
+            return "折线";
+          default:
+            return "";
+            break;
+        }
+      }
     }
   },
   methods: {
@@ -115,18 +141,33 @@ export default {
       this.$refs.newHor.value = "";
     },
     updateNode() {
-      if (this.$refs.hor.value !== "" && this.$refs.ver.value !== "") {
-        let type = this.nodeName
-          ? this.nodeName === "rect"
-            ? "General"
-            : this.nodeName === "path" ? "Decision" : "Start"
-          : "";
+      let type;
+      switch (this.nodeName) {
+        case "rect":
+          type = "General";
+          break;
+        case "path":
+          type = "Decision";
+          break;
+        case "ellipse":
+          type = "Start";
+          break;
+        case "line":
+          type = "line";
+          break;
+        case "polyLine":
+          type = "polyLine";
+        default:
+          break;
+      }
+      if (this.$refs.hor.value && this.$refs.ver.value) {
         this.SEL_NODETYPE(type);
         this.$emit("onUpdateNode", {
           left: this.$refs.hor.value,
           top: this.$refs.ver.value,
           content: this.$refs.updateContent.value,
-          act: "update"
+          act: "update",
+          type
         });
       }
     },
