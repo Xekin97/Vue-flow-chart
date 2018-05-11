@@ -1,5 +1,6 @@
 <template>
 <div>
+  <flow-top-tool @type-change="lineTypeChange"></flow-top-tool>  
   <div id="flowMainCont" class="flow-main-cont" ref="Cont">
     <div style="width:2000px;height:1000px">
       <div 
@@ -60,6 +61,7 @@
 </template>
 
 <script>
+import flowTopTool from './FlowTopTool'
 import shapesMixin from "./shapes/shapesMixin.js";
 import flowRight from "./FlowRight";
 import { mapState, mapMutations } from "vuex";
@@ -107,6 +109,7 @@ export default {
     };
   },
   components: {
+    flowTopTool,
     ToolMenu,
     flowRight
   },
@@ -239,7 +242,8 @@ export default {
         //单击事件
         _this.clickElementId = el.id;
         _this.clickInfo = JSON.parse(JSON.stringify(_this.selNodeInfo));
-        if (_this.selLineType === "Mouse") {
+        switch (_this.selLineType) {
+          case 'Mouse':
           clearTimeout(_this.timer);
           _this.UPDATE_NODECOORDINATE({
             x: _this.nodeData[el.id].left,
@@ -248,19 +252,24 @@ export default {
           _this.SEL_NODENAME(ev.target.localName); //传输图形名称
           _this.clickResize = true;
           _this.UPDATE_NODECONTENT(_this.clickInfo.text);
-        } else if (_this.selLineType === "StraightLine") {
+          break
+          case "StraightLine":
           // 连线功能
           _this.showArrow = true;
+          console.log(_this.drawLineInfo)
           if (_this.drawLineInfo.startNode === "") {
             _this.drawLineStart(ev);
           } else {
             _this.drawLineInfo.prevNode = _this.drawLineInfo.startNode;
             _this.drawingLine(ev);
           }
-        } else if (_this.selLineType === "LinePoly") {
+          break;
+          case "LinePoly":
           // 折线功能
           _this.$refs.Cont.addEventListener("mousemove", _this.drawLineStart);
           _this.$refs.Cont.addEventListener("click", _this.drawingLine);
+          break;
+          default: break;
         }
       };
       el.onmouseover = ev => {
@@ -320,6 +329,9 @@ export default {
       "UPDATE_LINE",
       "UPDATE_DRAWSTYLE"
     ]),
+    lineTypeChange(){
+      this.drawLineEnd();
+    },
     nodeHandle(val) {
       switch (val.act) {
         case "new":
@@ -481,20 +493,21 @@ export default {
           };
           break;
         case "StraightLine":
-          let style = {
+            console.log(this.drawLineInfo)
+          let sstyle = {
             x1: left,
             y1: top,
             x2: left,
             y2: top
           };
+          console.log(sstyle) ////??????
           this.drawLineInfo = {
-            ...this.drawLineInfo,
-            lineStyle: {
-              ...style
-            },
-            type: this.selLineType,
-            startNode: id
+            prevNode: "",
+            startNode: id,
+            lineStyle:{ ...sstyle },
+            type: this.selLineType
           };
+          console.log(this.drawLineInfo)///////what the fuck??
           break;
         default:
           break;
@@ -577,7 +590,6 @@ export default {
               });
               this.drawLineEnd();
             } else if (pointsCount.length < 8) {
-              this.drawLineInfo.lineStyle.points = "";
               this.$refs.Cont.addEventListener("mousemove", update);
             } else {
               this.$refs.Cont.removeEventListener("click", this.drawingLine);
@@ -587,7 +599,8 @@ export default {
           }
           break;
         case "StraightLine" :
-          if (this.drawLineInfo.prevNode !== id) {
+          console.log('1')
+          if (this.drawLineInfo.prevNode === id) {
             this.drawLineEnd();
             return;
           }
@@ -618,6 +631,7 @@ export default {
               y2: top
             }
           };
+
           break;
         default:
           break;
@@ -697,7 +711,7 @@ export default {
           switch (type) {
             case "LinePoly":
               let arr = this.lineData[key].lineStyle.points.split(" "); //['xxx,xxx', 'xxx,xxx']
-              // 与这个点进行比较 arr[arr.length-2]
+              // 与这个点进行比较 arr[arr.length-3]
               let vPoint = arr[arr.length - 3].split(",");
               let updatePoints = (() => {
                 let temp = this.lineData[key].lineStyle.points.split(" ");
@@ -705,7 +719,6 @@ export default {
                 return temp.join(" ");
               })();
               let points;
-              console.log(arr[arr.length - 1].split(",")[0])
               if (arr[arr.length - 3].split(",")[0] === arr[arr.length - 4].split(",")[0]) {
                 left - vPoint[0] > 0
                   ? (points = `${updatePoints} ${vPoint[0]},${top} ${vPoint[0]},${top} ${left - width / 2},${top}`)

@@ -193,12 +193,15 @@ export default {
         },
         mouse() {
           this.SEL_LINETYPE("Mouse");
+          this.$emit('type-change')
         },
         straight() {
           this.SEL_LINETYPE("StraightLine");
+          this.$emit('type-change')
         },
         poly() {
           this.SEL_LINETYPE("LinePoly");
+          this.$emit('type-change')
         },
         zoomIn() {
           if (this.drawStyle.zoomRate < 3) {
