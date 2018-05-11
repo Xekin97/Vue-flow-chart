@@ -1,19 +1,17 @@
 <template>
-  <!-- <div class="tool-menu-container" v-show="visible"> -->
+  <div class="tool-menu-container" v-show="visible">
   <ul id="toolMenu" class="tool-menu" :style="ulStyle" v-if="visible">
     <li class="tool-menu-item" v-for="(item,index) in menuData" :key="index" @click.stop="clickFn(item)">
       {{item.title}}
     </li>
   </ul>
-  <!-- <div class="tool-menu-mask" @click="close"></div> -->
-  <!-- </div> -->
+  <div class="tool-menu-mask" @click="close"></div>
+  </div>
 </template>
 
 <script>
 export default {
-  name: 'ToolMenu',
-  components: {
-  },
+  name: "ToolMenu",
   props: {
     visible: {
       type: Boolean
@@ -26,31 +24,29 @@ export default {
     }
   },
   watch: {
-    visible () {
+    visible() {
       if (this.visible) {
-        document.addEventListener('click', this.documentClick)
+        document.addEventListener("click", this.documentClick);
       } else {
-        document.removeEventListener('click', this.documentClick)
+        document.removeEventListener("click", this.documentClick);
       }
     }
   },
   methods: {
-    clickFn (item) {
-      this.$emit('update:visible', false)
-      this.$emit(
-        'selItem', item
-      )
+    clickFn(item) {
+      this.$emit("update:visible", false);
+      this.$emit("selItem", item);
     },
-    close () {
+    close() {
       if (this.visible) {
-        this.$emit('update:visible', false)
+        this.$emit("update:visible", false);
       }
     },
-    documentClick () {
-      this.$emit('update:visible', false)
+    documentClick() {
+      this.$emit("update:visible", false);
     }
   }
-}
+};
 </script>
 
 <style lang="scss">
@@ -82,6 +78,6 @@ export default {
   left: 0;
   bottom: 0;
   right: 0;
-  z-index: 998
+  z-index: 998;
 }
 </style>

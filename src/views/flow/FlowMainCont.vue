@@ -10,7 +10,7 @@
       @dragover.stop.prevent 
       @mousewheel.alt.prevent="wheelHandle" 
       >
-        <svg id="drawSVG" style="width:2000px; height:1500px; display: block; position: absolute; background-image: none;"> 
+        <svg id="drawSVG" style="width:2000px; height:1500px; display: block; position: absolute; background-image: none"> 
           <defs>
             <marker id="markerArrow" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
               <path d="M 0 0 L 12 6 L 0 12  L 4 6" style="fill: rgb(0,0,0);" transform="scale(0.8)"></path>
@@ -25,7 +25,7 @@
 
             <component :is="selLineType" :lineStyle="drawLineInfo.lineStyle" v-if="lineDrawing">
             </component>
-            <component v-for="(item,index) in lineData" :is="item.type" :key="index" :lineStyle="item.lineStyle" :id="item.id" v-line>
+            <component v-for="(item,index) in lineData" :text="item.text" :is="item.type" :key="index" :lineStyle="item.lineStyle" :id="item.id" v-line>
             </component>
             <component :is="clickInfo.type" :lineStyle="clickInfo.lineStyle" v-show="showLineSet">
             </component>
@@ -54,6 +54,7 @@
       </div>
     </div>
   </div>
+  <span>{{ mouseCoor }}</span>
   <flow-right :target="tar" @onNewNode="nodeHandle($event)" @onUpdateNode="nodeHandle($event)"></flow-right>
   </div>
 </template>
@@ -69,6 +70,7 @@ export default {
   mixins: [shapesMixin],
   data() {
     return {
+      mouseCoor: '',
       tar: "",
       // 节点相关
       updateTrans: {},
@@ -79,24 +81,17 @@ export default {
       clickInfo: {},
       showArrow: false,
       // 连线相关
+      end: false,
       drawLineInfo: {
         isFirstNode: true,
         prevNode: "",
         startNode: "",
-        startCoor: {
-          // left top
-        },
-        // type: 'StraightLine',
         type: "",
-        lineStyle: {
-          // x1: '',
-          // y1: '',
-          // x2: '',
-          // y2: ''
-        }
+        lineStyle: {}
       },
       editable: false,
       lineDrawing: false,
+      linePolyDrawing: false,
       arrowPadding: 15,
       timer: null,
       drawScale: 2,
@@ -242,6 +237,8 @@ export default {
       };
       el.onclick = ev => {
         //单击事件
+        _this.clickElementId = el.id;
+        _this.clickInfo = JSON.parse(JSON.stringify(_this.selNodeInfo));
         if (_this.selLineType === "Mouse") {
           clearTimeout(_this.timer);
           _this.UPDATE_NODECOORDINATE({
@@ -250,10 +247,8 @@ export default {
           });
           _this.SEL_NODENAME(ev.target.localName); //传输图形名称
           _this.clickResize = true;
-          _this.clickElementId = el.id;
-          _this.clickInfo = JSON.parse(JSON.stringify(_this.selNodeInfo));
           _this.UPDATE_NODECONTENT(_this.clickInfo.text);
-        } else {
+        } else if (_this.selLineType === "StraightLine") {
           // 连线功能
           _this.showArrow = true;
           if (_this.drawLineInfo.startNode === "") {
@@ -262,6 +257,10 @@ export default {
             _this.drawLineInfo.prevNode = _this.drawLineInfo.startNode;
             _this.drawingLine(ev);
           }
+        } else if (_this.selLineType === "LinePoly") {
+          // 折线功能
+          _this.$refs.Cont.addEventListener("mousemove", _this.drawLineStart);
+          _this.$refs.Cont.addEventListener("click", _this.drawingLine);
         }
       };
       el.onmouseover = ev => {
@@ -285,6 +284,7 @@ export default {
         _this.drawLineEnd();
         if (_this.selLineType === "Mouse") {
           _this.SEL_NODENAME(ev.target.localName);
+          _this.UPDATE_NODECONTENT(_this.clickInfo.text);
           _this.UPDATE_NODECOORDINATE({
             x: {
               x1: _this.lineData[el.id].lineStyle.x1,
@@ -295,6 +295,7 @@ export default {
               y2: _this.nodeData[_this.lineData[el.id].startNode].top
             }
           });
+          _this.clickElementId = el.id;
           _this.clickInfo = _this.deepCopy(_this.lineData[el.id]);
           _this.clickInfo.lineStyle.stroke = "#00a8ff";
           _this.clickInfo.lineStyle["stroke-dasharray"] = "3 3";
@@ -302,25 +303,10 @@ export default {
         }
       };
       el.onmousedown = ev => {
-        if (_this.selLineType === "Mouse") {
-          _this.lineDrawing = true;
-          _this.drawLineInfo.lineStyle.path = "";
-        }
-      };
-      el.ondblclick = ev => {
-        _this.editable = true;
-        let editor = el.querySelector(".line-text");
-        el.querySelector("foreignObject").setAttribute("pointer-events", "all");
-        editor.focus();
-        let fn = () => {
-          let text = editor.innerHTML;
-          let result = _this.deepCopy(_this.lineData[el.id]);
-          result.text = text;
-          _this.UPDATE_LINE({ [el.id]: result });
-          _this.editable = false;
-          document.querySelector(".line-text").removeEventListener("blur", fn);
-        };
-        document.querySelector(".line-text").addEventListener("blur", fn);
+        // if (_this.selLineType === "Mouse") {
+        //   _this.lineDrawing = true;
+        //   _this.drawLineInfo.lineStyle.path = "";
+        // }
       };
     }
   },
@@ -343,7 +329,7 @@ export default {
             let id = "node-" + new Date().getTime();
             this.UPDATE_NODE({
               [id]: {
-                id: "node-" + new Date().getTime(),
+                id: id,
                 type: this.selNodeType,
                 transform: `translate(${x},${y})`,
                 top: y,
@@ -354,19 +340,17 @@ export default {
           }
           break;
         case "update":
-          console.log("update start");
+          let id = this.clickElementId;
           if (val.type !== "line") {
-            this.deleteNode(this.clickElementId, true);
             if (this.selNodeType !== "") {
               let x = val.left;
               let y = val.top;
-              let id = this.clickElementId;
               let coor = { x: val.left, y: val.top };
               this.UPDATE_NODECONTENT(val.content);
               this.UPDATE_NODECOORDINATE(coor);
               this.UPDATE_NODE({
                 [id]: {
-                  id: this.clickElementId,
+                  id: id,
                   type: this.selNodeType,
                   transform: `translate(${x},${y})`,
                   top: y,
@@ -374,25 +358,22 @@ export default {
                   text: val.content
                 }
               });
-            } else {
-              this.UPDATE_LINE({
-                [id]: {
-                  text: val.content
-                }
-              });
-              console.log(this.lineData[id]);
             }
+          } else {
+            this.UPDATE_LINE({
+              [id]: {
+                ...this.lineData[id],
+                text: val.content
+              }
+            });
           }
-          break;
-        default:
-          break;
       }
     },
-    deleteNode(id = "", isUpdate = false) {
+    deleteNode(id = "", isUpdate = false, ev) {
       for (var key in this.lineData) {
         if (
           this.lineData[key].startNode === id ||
-          this.lineData[key].endNode === id
+          this.lineData[key].prevNode === id
         ) {
           delete this.lineData[key];
           this.UPDATE_LINE(this.lineData);
@@ -466,100 +447,150 @@ export default {
     outArrow(ev) {
       ev.target.style.opacity = 0.5;
     },
-    computePolyLine(start, end, direction) {
-      let startPoint = {
-        x: +start.split(",")[0],
-        y: +start.split(",")[1]
-      };
-      let endPoint = {
-        x: +end.split(",")[0],
-        y: +end.split(",")[1]
-      };
-      let m1, m2;
-      switch (direction) {
-        case "t":
-        case "b":
-          let mY = startPoint.y + (endPoint.y - startPoint.y) / 2;
-          m1 = {
-            x: startPoint.x,
-            y: mY
-          };
-          m2 = {
-            x: endPoint.x,
-            y: mY
-          };
-          break;
-        case "l":
-        case "r":
-          let mX = startPoint.x + (endPoint.x - startPoint.x) / 2;
-          m1 = {
-            x: mX,
-            y: startPoint.y
-          };
-          m2 = {
-            x: mX,
-            y: endPoint.y
-          };
-          break;
-        default:
-          break;
-      }
-
-      return `${startPoint.x},${startPoint.y} ${m1.x},${m1.y} ${m2.x},${m2.y} ${
-        endPoint.x
-      },${endPoint.y}`;
-    },
     drawLineStart(ev) {
       this.lineDrawing = true;
-      let { id, top, left } = this.selNodeInfo;
-      let style = {};
+      let { id, top, left, width, height } = this.clickInfo;
       switch (this.selLineType) {
         case "LinePoly":
-          style = {
-            points: `${al},${at}`
+          this.linePolyDrawing = true;
+          let direction, points, l, t;
+          if (Math.abs(ev.offsetX - left) - Math.abs(ev.offsetY - top) >= 0) {
+            direction = `${ev.offsetX},${top}`;
+            ev.offsetX - left > 0
+              ? (l = left * 1 + width / 2)
+              : (l = left - width / 2);
+          } else {
+            l = left;
+          }
+          if (Math.abs(ev.offsetY - top) - Math.abs(ev.offsetX - left) > 0) {
+            direction = `${left},${ev.offsetY}`;
+            ev.offsetY - top > 0
+              ? (t = top * 1 + height / 2)
+              : (t = top - height / 2);
+          } else {
+            t = top;
+          }
+          points = `${l},${t} ${direction}`;
+          this.drawLineInfo = {
+            ...this.drawLineInfo,
+            lineStyle: {
+              points
+            },
+            type: this.selLineType,
+            prevNode: id
           };
           break;
         case "StraightLine":
-          style = {
+          let style = {
             x1: left,
             y1: top,
             x2: left,
             y2: top
           };
+          this.drawLineInfo = {
+            ...this.drawLineInfo,
+            lineStyle: {
+              ...style
+            },
+            type: this.selLineType,
+            startNode: id
+          };
           break;
         default:
           break;
       }
-      this.drawLineInfo = {
-        ...this.drawLineInfo,
-        lineStyle: {
-          ...style
-        },
-        type: this.selLineType,
-        startNode: id
-      };
     },
     drawingLine(ev) {
       if (!this.lineDrawing) {
         return;
       }
       let { id, top, left, width, height } = this.selNodeInfo;
-      if (this.drawLineInfo.prevNode === id) {
-        this.drawLineEnd();
-        return;
-      }
-
       switch (this.selLineType) {
         case "LinePoly":
-          let startP = this.drawLineInfo.lineStyle.points.split(" ")[0];
-          let endP = `${left},${top}`;
-          this.drawLineInfo.lineStyle.points = this.computePolyLine(
-            startP,
-            endP,
-            direction
-          );
+          if (this.linePolyDrawing) {
+            this.$refs.Cont.removeEventListener(
+              "mousemove",
+              this.drawLineStart
+            );
+            let arr = this.drawLineInfo.lineStyle.points.split(" ");
+            let updatePoints = this.drawLineInfo.lineStyle.points; //string
+            let pointsCount = updatePoints.split(" "); //arr
+            let direction;
+            let update = ev => {
+              if (this.linePolyDrawing) {
+                // 正交方向判断
+                Math.abs(ev.offsetX - arr[arr.length - 1].split(",")[0]) -
+                  Math.abs(ev.offsetY - arr[arr.length - 1].split(",")[1]) >=
+                0
+                  ? (direction = `${ev.offsetX},${
+                      arr[arr.length - 1].split(",")[1]
+                    }`)
+                  : (direction = `${arr[arr.length - 1].split(",")[0]},${
+                      ev.offsetY
+                    }`);
+                this.drawLineInfo = {
+                  ...this.drawLineInfo,
+                  lineStyle: {
+                    points: `${updatePoints} ${
+                      arr[arr.length - 1]
+                    } ${direction}`
+                  }
+                };
+              }
+            };
+            if (this.drawLineInfo.prevNode !== id) {
+              this.$refs.Cont.removeEventListener("mousemove", update);
+              // 目标不为空 fix终点
+              let { width, height } = this.clickInfo;
+              let { left, top } = this.nodeData[id];
+              let l = arr[arr.length - 2].split(",")[0];
+              let t = arr[arr.length - 2].split(",")[1];
+              let points, resultL, resultT;
+              updatePoints = (() => {
+                let temp = updatePoints.split(" ");
+                temp.splice(-3, 3);
+                return temp.join(" ");
+              })();
+              if (Math.abs(l - left) - Math.abs(t - top) > 0) {
+                l - left > 0
+                  ? (resultL = left + width / 2)
+                  : (resultL = left - width / 2);
+                points = `${updatePoints} ${l},${top} ${l},${top} ${resultL},${top}`;
+              } else {
+                t - top > 0
+                  ? (resultT = top + height / 2)
+                  : (resultT = top - height / 2);
+                points = `${updatePoints} ${left},${t} ${left},${t} ${left},${resultT}`;
+              }
+              this.drawLineInfo = {
+                ...this.drawLineInfo,
+                startNode: id,
+                lineStyle: {
+                  points
+                }
+              };
+              let data = this.deepCopy(this.drawLineInfo);
+              let lineId = "line-" + new Date().getTime();
+              data.id = lineId;
+              this.UPDATE_LINE({
+                [lineId]: data
+              });
+              this.drawLineEnd();
+            } else if (pointsCount.length < 8) {
+              this.drawLineInfo.lineStyle.points = "";
+              this.$refs.Cont.addEventListener("mousemove", update);
+            } else {
+              this.$refs.Cont.removeEventListener("click", this.drawingLine);
+              this.$refs.Cont.removeEventListener("mousemove", update);
+              this.drawLineEnd();
+            }
+          }
           break;
-        case "StraightLine":
+        case "StraightLine" :
+          if (this.drawLineInfo.prevNode !== id) {
+            this.drawLineEnd();
+            return;
+          }
           let result = this.equalLineEnd({
             top,
             left,
@@ -570,28 +601,27 @@ export default {
           });
           this.drawLineInfo.lineStyle.y2 = result.t;
           this.drawLineInfo.lineStyle.x2 = result.l;
+          this.drawLineInfo.startNode = id;
+          this.drawLineInfo.startCoor = { l: left, t: top };
+          let data = this.deepCopy(this.drawLineInfo);
+          let lineId = "line-" + new Date().getTime();
+          data.id = lineId;
+          this.UPDATE_LINE({
+            [lineId]: data
+          });
+          this.drawLineInfo = {
+            ...this.drawLineInfo,
+            lineStyle: {
+              x1: left,
+              y1: top,
+              x2: left,
+              y2: top
+            }
+          };
           break;
         default:
           break;
       }
-      this.drawLineInfo.startNode = id;
-      this.drawLineInfo.startCoor = { l: left, t: top };
-      let data = this.deepCopy(this.drawLineInfo);
-      let lineId = "line-" + new Date().getTime();
-      data.id = lineId;
-      this.UPDATE_LINE({
-        [lineId]: data
-      });
-
-      this.drawLineInfo = {
-        ...this.drawLineInfo,
-        lineStyle: {
-          x1: left,
-          y1: top,
-          x2: left,
-          y2: top
-        }
-      };
     },
     drawLineEnd() {
       this.drawLineInfo = {
@@ -602,25 +632,38 @@ export default {
       };
       this.showArrow = false;
       this.lineDrawing = false;
+      this.linePolyDrawing = false;
     },
     updateLine() {
-      let { id, left, top, width, height, startCoor } = this.selNodeInfo;
+      let { id, left, top, width, height } = this.selNodeInfo;
       let data = {};
       for (var key in this.lineData) {
         if (this.lineData[key].prevNode === id) {
           // 获取开始端口坐标
           let type = this.lineData[key].type;
-
           switch (type) {
             case "LinePoly":
-              let arr = this.lineData[key].lineStyle.points.split(" ");
-              let startP = `${left},${top}`;
-              let endP = arr[arr.length - 1];
-              let points = this.computePolyLine(startP, endP, direction);
+              let arr = this.lineData[key].lineStyle.points.split(" "); //['xxx,xxx', 'xxx,xxx']
+              // 与这个点进行比较 arr[arr.length-2]
+              let vPoint = arr[2].split(",");
+              let updatePoints = (() => {
+                let temp = this.lineData[key].lineStyle.points.split(" ");
+                temp.splice(0, 3);
+                return temp.join(" ");
+              })();
+              let points;
+              if (arr[2].split(",")[0] === arr[3].split(",")[0]) {
+                left - vPoint[0] > 0
+                  ? (points = `${left - width / 2},${top} ${vPoint[0]},${top} ${vPoint[0]},${top} ${updatePoints}`)
+                  : (points = `${left + width / 2},${top} ${vPoint[0]},${top} ${vPoint[0]},${top} ${updatePoints}`);
+              } else if (arr[2].split(",")[1] === arr[3].split(",")[1]) {
+                top - vPoint[1] > 0
+                  ? (points = `${left},${top - height / 2} ${left},${vPoint[1]} ${left},${vPoint[1]} ${updatePoints}`)
+                  : (points = `${left},${top + height / 2} ${left},${vPoint[1]} ${left},${vPoint[1]} ${updatePoints}`);
+              }
               data[key] = {
                 ...this.lineData[key],
                 lineStyle: {
-                  ...this.lineData[key].lineStyle,
                   points
                 }
               };
@@ -653,14 +696,28 @@ export default {
           let type = this.lineData[key].type;
           switch (type) {
             case "LinePoly":
-              let arr = this.lineData[key].lineStyle.points.split(" "); //[x1,y1,x2,y2]
-              let startP = arr[0];
-              let endP = `${left},${top}`;
-              let points = this.computePolyLine(startP, endP, direction);
+              let arr = this.lineData[key].lineStyle.points.split(" "); //['xxx,xxx', 'xxx,xxx']
+              // 与这个点进行比较 arr[arr.length-2]
+              let vPoint = arr[arr.length - 3].split(",");
+              let updatePoints = (() => {
+                let temp = this.lineData[key].lineStyle.points.split(" ");
+                temp.splice(-3);
+                return temp.join(" ");
+              })();
+              let points;
+              console.log(arr[arr.length - 1].split(",")[0])
+              if (arr[arr.length - 3].split(",")[0] === arr[arr.length - 4].split(",")[0]) {
+                left - vPoint[0] > 0
+                  ? (points = `${updatePoints} ${vPoint[0]},${top} ${vPoint[0]},${top} ${left - width / 2},${top}`)
+                  : (points = `${updatePoints} ${vPoint[0]},${top} ${vPoint[0]},${top} ${left + width / 2},${top}`);
+              } else if (arr[1].split(",")[1] === arr[2].split(",")[1]) {
+                top - vPoint[1] > 0
+                  ? (points = `${updatePoints} ${left},${vPoint[1]} ${left},${vPoint[1]} ${left},${top - height / 2}`)
+                  : (points = `${updatePoints} ${left},${vPoint[1]} ${left},${vPoint[1]} ${left},${top + height / 2}`);
+              }
               data[key] = {
                 ...this.lineData[key],
                 lineStyle: {
-                  ...this.lineData[key].lineStyle,
                   points
                 }
               };
@@ -723,8 +780,15 @@ export default {
   },
   mounted() {
     this.tar = this.$refs.Cont;
+    this.$refs.Cont.addEventListener("mousemove", ev => {
+      this.mouseCoor = `${ev.offsetX},${ev.offsetY}`
+    });
     document.addEventListener("mouseup", ev => {
-      if (this.drawingLine && ev.target.localName === "svg") {
+      if (
+        this.selLineType === "StraightLine" &&
+        ev.target.localName === "svg" &&
+        this.lineDrawing
+      ) {
         this.drawLineEnd();
       }
       if (this.selNodeType) {
@@ -742,10 +806,10 @@ export default {
     });
     // 阻止右键事件button
     document.addEventListener("keydown", ev => {
-      if (this.clickInfo.id) {
-        let { id } = this.clickInfo;
-        switch (ev.keyCode) {
-          case 46:
+      switch (ev.keyCode) {
+        case 46:
+          if (this.clickInfo.id) {
+            let { id } = this.clickInfo;
             let selType = id.replace(/-.*/, "");
             if (selType === "node") {
               this.deleteNode(id);
@@ -757,10 +821,16 @@ export default {
               this.showLineSet = false;
               this.clickInfo = {};
             }
-            break;
-          default:
-            break;
-        }
+          }
+          break;
+        case 27:
+          if (this.lineDrawing && this.selLineType === "LinePoly") {
+            this.drawLineEnd();
+            this.$refs.Cont.removeEventListener;
+          }
+          break;
+        default:
+          break;
       }
     });
   }
@@ -809,5 +879,14 @@ export default {
       opacity: 1;
     }
   }
+}
+</style>
+
+<style scoped>
+span{
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    z-index: 9999;
 }
 </style>

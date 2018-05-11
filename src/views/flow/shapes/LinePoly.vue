@@ -19,7 +19,7 @@ export default {
   data () {
     return {
       defaultStyle: {
-        points: '0,0',
+        points: '',
         stroke: '#333',
         'stroke-width': 1.2,
         'fill': 'none',
@@ -115,7 +115,3 @@ export default {
   }
 }
 </script>
-
-<style>
-
-</style>

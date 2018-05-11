@@ -46,8 +46,8 @@ export default {
       search: "",
       newHor: 0,
       newVer: 0,
-      clickType: "node",
       tab: "Start",
+      clickType:'node',
       tabs: [
         { label: "椭圆", type: "Start" },
         { label: "矩形", type: "General" },
@@ -60,7 +60,6 @@ export default {
       common(document.getElementById("flowMainCont"), this.search);
     },
     SVGName() {
-
       if (this.SVGName === "") {
         this.$refs.hor.setAttribute("disabled", "disabled");
         this.$refs.ver.setAttribute("disabled", "disabled");
@@ -103,22 +102,20 @@ export default {
       return { x: this.nodeCoordinate.x, y: this.nodeCoordinate.y };
     },
     SVGName() {
-      if (this.nodeName) {
-        switch (this.nodeName) {
-          case "rect":
-            return "矩形";
-          case "path":
-            return "菱形";
-          case "ellipse":
-            return "椭圆";
-          case "line":
-            return "直线";
-          case "polyLine":
-            return "折线";
-          default:
-            return "";
-            break;
-        }
+      switch (this.nodeName) {
+        case "rect":
+          return "矩形";
+        case "path":
+          return "菱形";
+        case "ellipse":
+          return "椭圆";
+        case "line":
+          return "直线";
+        case "polyLine":
+          return "折线";
+        default:
+          return "";
+          break;
       }
     }
   },
@@ -160,14 +157,21 @@ export default {
         default:
           break;
       }
-      if (this.$refs.hor.value && this.$refs.ver.value) {
+      if (type !== 'line' && this.$refs.hor.value && this.$refs.ver.value) {
         this.SEL_NODETYPE(type);
         this.$emit("onUpdateNode", {
           left: this.$refs.hor.value,
           top: this.$refs.ver.value,
           content: this.$refs.updateContent.value,
           act: "update",
-          type
+          type: type
+        });
+      }else {
+        this.SEL_NODETYPE(type);
+        this.$emit("onUpdateNode", {
+          content: this.$refs.updateContent.value,
+          act: "update",
+          type: type
         });
       }
     },
@@ -186,9 +190,9 @@ export default {
     ])
   },
   mounted() {
-    this.$refs.hor.setAttribute("disabled", "disabled");
-    this.$refs.ver.setAttribute("disabled", "disabled");
-    this.$refs.updateContent.setAttribute("disabled", "disabled");
+    this.$refs.hor.disabled = "disabled";
+    this.$refs.ver.disabled = "disabled";
+    this.$refs.updateContent.disabled = "disabled";
   }
 };
 </script>

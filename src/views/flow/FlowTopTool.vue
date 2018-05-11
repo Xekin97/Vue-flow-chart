@@ -1,4 +1,5 @@
 <script>
+import flowTool from './FlowTool'
 import { mapMutations, mapState } from "vuex";
 import ToolMenu from "./ToolMenu";
 import {eventBus} from "../../eventBus";
@@ -41,12 +42,13 @@ export default {
         <div class="ftt-container" onClick={this.toolDelegate}>
           {items}
         </div>
+        <flow-tool></flow-tool>
         <tool-menu
           ulStyle={"width:100px;text-align:center"}
           visible={this.visible}
           menuData={this.menuData}
           onSelItem={this.menuClickFn}
-        />
+        ></tool-menu>
       </div>
     );
   },
@@ -155,7 +157,7 @@ export default {
     };
   },
   components: {
-    ToolMenu
+    ToolMenu,flowTool
   },
   computed: {
     ...mapState("flow", [
@@ -287,6 +289,67 @@ export default {
       margin-left: 6px;
       margin-right: 6px;
       margin-top: -2px;
+    }
+  }
+}
+
+.flow-tool {
+  border-bottom: 1px solid $borderColor;
+  border-top: 1px solid $borderColor;
+  width: 208px;
+  height: 34px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 354px;
+  overflow: auto;
+  background: whiteSmoke;
+  svg {
+    width: 40px;
+    height: 32px;
+    display: block;
+    position: relative;
+    bottom: 2px;
+    overflow: hidden;
+    cursor: move;
+  }
+  .container {
+    a {
+      cursor: pointer;
+    }
+    .title {
+      color: #333;
+      background: #eee;
+      padding: 6px 0px 6px 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.4em;
+      font-size: 9pt;
+      display: flex;
+      align-items: center;
+    }
+    .icon {
+      margin-right: 8px;
+    }
+    .shapeList {
+      display: flex;
+      flex-wrap: wrap;
+      background: #f5f5f5;
+      .listItem {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: move;
+        .item {
+          width: 40px;
+          height: 32px;
+          overflow: hidden;
+          cursor: move;
+          background: none;
+          margin-left: 10px;
+        }
+      }
     }
   }
 }
