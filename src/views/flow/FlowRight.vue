@@ -69,9 +69,11 @@ export default {
         this.$refs.updateContent.removeAttribute("disabled");
       } else {
         this.clickType = 'node';
+        this.$nextTick(() => { // watch异步回调 由于视图更新顺序，在这里需要使用回调API
         this.$refs.hor.removeAttribute("disabled");
         this.$refs.ver.removeAttribute("disabled");
         this.$refs.updateContent.removeAttribute("disabled");
+        })  
       }
     },
     enterCoor() {
@@ -124,7 +126,7 @@ export default {
       this.tab = val.type;
     },
     selnode(val) {
-      if (this.$refs.newHor.value !== "" && this.$refs.newVer.value !== "") {
+      if (this.$refs.newHor.value !== "" && this.$refs.newVer.value !== "") { //当input的值不为空时将值传给画布
         this.SEL_NODETYPE(this.tab);
         this.$emit("onNewNode", {
           left: this.$refs.newHor.value,

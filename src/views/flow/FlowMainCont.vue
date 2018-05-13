@@ -11,7 +11,7 @@
       @dragover.stop.prevent 
       @mousewheel.alt.prevent="wheelHandle" 
       >
-        <svg id="drawSVG" style="width:2000px; height:1500px; display: block; position: absolute; background-image: none"> 
+        <svg id="drawSVG" style="width:100%; height:100%; display: block; position: absolute; background-image: none"> 
           <defs>
             <marker id="markerArrow" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
               <path d="M 0 0 L 12 6 L 0 12  L 4 6" style="fill: rgb(0,0,0);" transform="scale(0.8)"></path>
@@ -166,19 +166,14 @@ export default {
         let obj = el.getElementsByTagName("g")[0];
         let w = obj.getBoundingClientRect().width / _this.drawStyle.zoomRate;
         let h = obj.getBoundingClientRect().height / _this.drawStyle.zoomRate;
-        let wh = {
-          width: w,
-          height: h
-        };
+        let wh = { width: w, height: h};
         let nodeInfo = _this.nodeData[el.id];
-        _this.selNodeInfo = Object.assign({}, nodeInfo, wh);
+        _this.selNodeInfo = Object.assign({}, nodeInfo, wh); // 重写更新视图
       };
       el.onmousedown = ev => {
-        if (_this.selLineType === "Mouse") {
+        if (_this.selLineType === "Mouse") { // 拖拽只在选中选择这一项时可以使用
           _this.SEL_NODENAME(ev.target.localName); // 拖拽函数
-          if (ev.button === 2) {
-            return;
-          }
+          if (ev.button === 2) { return; } 
           clearTimeout(_this.timer);
           _this.timer = setTimeout(() => {
             _this.isDragging = true;
@@ -190,7 +185,6 @@ export default {
               _this.UPDATE_NODECOORDINATE({ x: ev.offsetX, y: ev.offsetY });
               _this.selNodeInfo.transform = val;
             };
-
             // 节点移动结束后更新节点
             let updata = ev => {
               if (_this.isDragging) {
@@ -211,31 +205,22 @@ export default {
               _this.isDragging = false;
               _this.updateLine();
               // 移除画布事件
-              document
-                .querySelector("#draw")
-                .removeEventListener("mousemove", fn);
-              document
-                .querySelector("#draw")
-                .removeEventListener("mouseup", updata);
-              document
-                .querySelector("#draw")
-                .removeEventListener("mouseleave", leaveFn);
+              document.querySelector("#draw").removeEventListener("mousemove", fn);
+              document.querySelector("#draw").removeEventListener("mouseup", updata);
+              document.querySelector("#draw").removeEventListener("mouseleave", leaveFn);
             };
 
             // 离开画布后触发的方法
             let leaveFn = ev => {
               if (_this.isDragging) {
                 updata(ev);
-                // _this.showArrow = false;
               }
             };
             // 添加画布事件
             document.querySelector("#draw").addEventListener("mousemove", fn);
             document.querySelector("#draw").addEventListener("mouseup", updata);
-            document
-              .querySelector("#draw")
-              .addEventListener("mouseleave", leaveFn);
-          }, 200);
+            document.querySelector("#draw").addEventListener("mouseleave", leaveFn);
+            }, 200);
         }
       };
       el.onclick = ev => {
@@ -249,19 +234,18 @@ export default {
             x: _this.nodeData[el.id].left,
             y: _this.nodeData[el.id].top
           });
-          _this.SEL_NODENAME(ev.target.localName); //传输图形名称
+          _this.SEL_NODENAME(ev.target.localName);  //传输图形名称
           _this.clickResize = true;
-          _this.UPDATE_NODECONTENT(_this.clickInfo.text);
+          _this.UPDATE_NODECONTENT(_this.clickInfo.text); //传输点击对象内容
           break
           case "StraightLine":
           // 连线功能
           _this.showArrow = true;
-          console.log(_this.drawLineInfo)
-          if (_this.drawLineInfo.startNode === "") {
-            _this.drawLineStart(ev);
-          } else {
+          if (_this.drawLineInfo.startNode === "") { // 判断点击对象是否有终点
+            _this.drawLineStart(ev);  // drawlinestart 确定起点
+          } else {        // 连接起点和终点
             _this.drawLineInfo.prevNode = _this.drawLineInfo.startNode;
-            _this.drawingLine(ev);
+            _this.drawingLine(ev);  
           }
           break;
           case "LinePoly":
@@ -334,7 +318,7 @@ export default {
     },
     nodeHandle(val) {
       switch (val.act) {
-        case "new":
+        case "new":   // 通过右侧表单新建节点
           if (this.selNodeType !== "") {
             let x = val.left;
             let y = val.top;
@@ -351,7 +335,7 @@ export default {
             });
           }
           break;
-        case "update":
+        case "update":   // 属性设置更新画布
           let id = this.clickElementId;
           if (val.type !== "line") {
             if (this.selNodeType !== "") {
@@ -370,8 +354,9 @@ export default {
                   text: val.content
                 }
               });
+              this.updateLine();
             }
-          } else {
+          } else { // 更新连线内容
             this.UPDATE_LINE({
               [id]: {
                 ...this.lineData[id],
@@ -460,98 +445,70 @@ export default {
       ev.target.style.opacity = 0.5;
     },
     drawLineStart(ev) {
-      this.lineDrawing = true;
+      this.lineDrawing = true; // 开始绘制连线
       let { id, top, left, width, height } = this.clickInfo;
       switch (this.selLineType) {
         case "LinePoly":
-          this.linePolyDrawing = true;
+          this.linePolyDrawing = true; // 开始绘制折线
           let direction, points, l, t;
-          if (Math.abs(ev.offsetX - left) - Math.abs(ev.offsetY - top) >= 0) {
+          if (Math.abs(ev.offsetX - left) - Math.abs(ev.offsetY - top) >= 0) {  // 正交方向判断拖拽后的节点相对位置，以确定连线终点坐标
             direction = `${ev.offsetX},${top}`;
-            ev.offsetX - left > 0
-              ? (l = left * 1 + width / 2)
-              : (l = left - width / 2);
+            ev.offsetX - left > 0 ? (l = left * 1 + width / 2) : (l = left - width / 2);
           } else {
             l = left;
           }
-          if (Math.abs(ev.offsetY - top) - Math.abs(ev.offsetX - left) > 0) {
+          if (Math.abs(ev.offsetY - top) - Math.abs(ev.offsetX - left) > 0) {   // 正交方向判断拖拽后的节点相对位置，以确定连线终点坐标
             direction = `${left},${ev.offsetY}`;
-            ev.offsetY - top > 0
-              ? (t = top * 1 + height / 2)
-              : (t = top - height / 2);
+            ev.offsetY - top > 0 ? (t = top * 1 + height / 2) : (t = top - height / 2);
           } else {
             t = top;
           }
-          points = `${l},${t} ${direction}`;
+          points = `${l},${t} ${direction}`; // 计算得到 svg 的linepoly标签折点属性 points
           this.drawLineInfo = {
             ...this.drawLineInfo,
-            lineStyle: {
-              points
-            },
+            lineStyle: { points },
             type: this.selLineType,
             prevNode: id
-          };
+          };  // 传入临时数据存储
           break;
         case "StraightLine":
-            console.log(this.drawLineInfo)
-          let sstyle = {
-            x1: left,
-            y1: top,
-            x2: left,
-            y2: top
-          };
-          console.log(sstyle) ////??????
+          let sstyle = { x1: left, y1: top, x2: left, y2: top };
           this.drawLineInfo = {
             prevNode: "",
             startNode: id,
             lineStyle:{ ...sstyle },
             type: this.selLineType
           };
-          console.log(this.drawLineInfo)///////what the fuck??
           break;
         default:
           break;
       }
     },
     drawingLine(ev) {
-      if (!this.lineDrawing) {
-        return;
-      }
-      let { id, top, left, width, height } = this.selNodeInfo;
+      if (!this.lineDrawing) { return; }// 绘制连线是通过监听画布鼠标事件的，只有当连线开始为true的时候才开始绘制
+      let { id, top, left, width, height } = this.clickInfo; // 从点击对象获取需要用来计算的相关数据
       switch (this.selLineType) {
         case "LinePoly":
-          if (this.linePolyDrawing) {
-            this.$refs.Cont.removeEventListener(
-              "mousemove",
-              this.drawLineStart
-            );
+          if (this.linePolyDrawing) { // 在折线绘制开始后移除drawLineStart的画布折线开始事件进入绘制折线路径阶段
+            this.$refs.Cont.removeEventListener("mousemove", this.drawLineStart);
             let arr = this.drawLineInfo.lineStyle.points.split(" ");
             let updatePoints = this.drawLineInfo.lineStyle.points; //string
             let pointsCount = updatePoints.split(" "); //arr
             let direction;
-            let update = ev => {
-              if (this.linePolyDrawing) {
+            let update = ev => {  // 转折点绘制
+              if (this.linePolyDrawing) { // 折线是否正在绘制
                 // 正交方向判断
-                Math.abs(ev.offsetX - arr[arr.length - 1].split(",")[0]) -
-                  Math.abs(ev.offsetY - arr[arr.length - 1].split(",")[1]) >=
-                0
-                  ? (direction = `${ev.offsetX},${
-                      arr[arr.length - 1].split(",")[1]
-                    }`)
-                  : (direction = `${arr[arr.length - 1].split(",")[0]},${
-                      ev.offsetY
-                    }`);
+                Math.abs(ev.offsetX - arr[arr.length - 1].split(",")[0]) - Math.abs(ev.offsetY - arr[arr.length - 1].split(",")[1]) >= 0
+                  ? (direction = `${ev.offsetX},${arr[arr.length - 1].split(",")[1]}`)
+                  : (direction = `${arr[arr.length - 1].split(",")[0]},${ev.offsetY}`);
                 this.drawLineInfo = {
                   ...this.drawLineInfo,
-                  lineStyle: {
-                    points: `${updatePoints} ${
-                      arr[arr.length - 1]
-                    } ${direction}`
-                  }
+                  lineStyle: { points: `${updatePoints} ${arr[arr.length - 1]} ${direction}` }
                 };
               }
             };
-            if (this.drawLineInfo.prevNode !== id) {
+            if (this.drawLineInfo.prevNode !== id) { // 在没有下一个节点点击事件触发前，prevNode === id，在点击对象为新的节点时，意味着进入折线结束阶段绘制最终折线结果
+              this.$refs.Cont.removeEventListener("click", this.drawingLine);
               this.$refs.Cont.removeEventListener("mousemove", update);
               // 目标不为空 fix终点
               let { width, height } = this.clickInfo;
@@ -564,17 +521,15 @@ export default {
                 temp.splice(-3, 3);
                 return temp.join(" ");
               })();
-              if (Math.abs(l - left) - Math.abs(t - top) > 0) {
-                l - left > 0
-                  ? (resultL = left + width / 2)
-                  : (resultL = left - width / 2);
+
+              if (Math.abs(l - left) - Math.abs(t - top) > 0) { // 判断箭头自动调节落点
+                l - left > 0 ? (resultL = left + width / 2) : (resultL = left - width / 2);
                 points = `${updatePoints} ${l},${top} ${l},${top} ${resultL},${top}`;
               } else {
-                t - top > 0
-                  ? (resultT = top + height / 2)
-                  : (resultT = top - height / 2);
+                t - top > 0 ? (resultT = top + height / 2) : (resultT = top - height / 2);
                 points = `${updatePoints} ${left},${t} ${left},${t} ${left},${resultT}`;
               }
+
               this.drawLineInfo = {
                 ...this.drawLineInfo,
                 startNode: id,
@@ -585,13 +540,11 @@ export default {
               let data = this.deepCopy(this.drawLineInfo);
               let lineId = "line-" + new Date().getTime();
               data.id = lineId;
-              this.UPDATE_LINE({
-                [lineId]: data
-              });
+              this.UPDATE_LINE({ [lineId]: data }); // 存为真实节点并绘制在画布上
               this.drawLineEnd();
-            } else if (pointsCount.length < 8) {
+            } else if (pointsCount.length < 8) { // 在超出3个转折前，保持绘制监听事件
               this.$refs.Cont.addEventListener("mousemove", update);
-            } else {
+            } else {  // 超出3个转折点后，视为无效连线，移除事件并清空临时数据
               this.$refs.Cont.removeEventListener("click", this.drawingLine);
               this.$refs.Cont.removeEventListener("mousemove", update);
               this.drawLineEnd();
@@ -599,8 +552,7 @@ export default {
           }
           break;
         case "StraightLine" :
-          console.log('1')
-          if (this.drawLineInfo.prevNode === id) {
+          if (this.drawLineInfo.prevNode === id) { // 如果点击对象为起点本身，视为取消连线
             this.drawLineEnd();
             return;
           }
@@ -624,14 +576,8 @@ export default {
           });
           this.drawLineInfo = {
             ...this.drawLineInfo,
-            lineStyle: {
-              x1: left,
-              y1: top,
-              x2: left,
-              y2: top
-            }
+            lineStyle: { x1: left, y1: top, x2: left, y2: top }
           };
-
           break;
         default:
           break;
@@ -660,13 +606,13 @@ export default {
               let arr = this.lineData[key].lineStyle.points.split(" "); //['xxx,xxx', 'xxx,xxx']
               // 与这个点进行比较 arr[arr.length-2]
               let vPoint = arr[2].split(",");
+              let points;
               let updatePoints = (() => {
                 let temp = this.lineData[key].lineStyle.points.split(" ");
                 temp.splice(0, 3);
                 return temp.join(" ");
               })();
-              let points;
-              if (arr[2].split(",")[0] === arr[3].split(",")[0]) {
+              if (arr[2].split(",")[0] === arr[3].split(",")[0]) { // 判断第二个转折点和第三个转折点的关系，确定该转折线为横向还是纵向从而来调节更新折线
                 left - vPoint[0] > 0
                   ? (points = `${left - width / 2},${top} ${vPoint[0]},${top} ${vPoint[0]},${top} ${updatePoints}`)
                   : (points = `${left + width / 2},${top} ${vPoint[0]},${top} ${vPoint[0]},${top} ${updatePoints}`);
@@ -677,13 +623,11 @@ export default {
               }
               data[key] = {
                 ...this.lineData[key],
-                lineStyle: {
-                  points
-                }
+                lineStyle: { points }
               };
               break;
             case "StraightLine":
-              let result = this.equalLineEnd({
+              let result = this.equalLineEnd({ // 计算终点
                 height,
                 width,
                 top: this.lineData[key].startCoor.t,
@@ -719,7 +663,7 @@ export default {
                 return temp.join(" ");
               })();
               let points;
-              if (arr[arr.length - 3].split(",")[0] === arr[arr.length - 4].split(",")[0]) {
+              if (arr[arr.length - 3].split(",")[0] === arr[arr.length - 4].split(",")[0]) { // 判断倒数第二个点和第三个点的关系
                 left - vPoint[0] > 0
                   ? (points = `${updatePoints} ${vPoint[0]},${top} ${vPoint[0]},${top} ${left - width / 2},${top}`)
                   : (points = `${updatePoints} ${vPoint[0]},${top} ${vPoint[0]},${top} ${left + width / 2},${top}`);
@@ -730,17 +674,12 @@ export default {
               }
               data[key] = {
                 ...this.lineData[key],
-                lineStyle: {
-                  points
-                }
+                lineStyle: { points }
               };
               break;
             case "StraightLine":
               let result = this.equalLineEnd({
-                height,
-                width,
-                top,
-                left,
+                height, width, top, left,
                 x: this.lineData[key].lineStyle.x1,
                 y: this.lineData[key].lineStyle.y1
               });
@@ -761,7 +700,7 @@ export default {
         this.UPDATE_LINE(data);
       }
     },
-    deepCopy(s, t = {}) {
+    deepCopy(s, t = {}) { // 深拷贝
       for (var i in s) {
         if (typeof s[i] === "object") {
           t[i] = s[i].constructor === Array ? [] : {};
@@ -772,7 +711,7 @@ export default {
       }
       return t;
     },
-    equalLineEnd(opt) {
+    equalLineEnd(opt) { // 通用的直线终点计算函数（矩形）
       let { x, y, height, width, top, left } = opt;
       let RA = Math.atan(height / width);
       let versus = Math.abs((y - top) / (x - left));
@@ -792,12 +731,12 @@ export default {
     }
   },
   mounted() {
-    this.tar = this.$refs.Cont;
+    this.tar = this.$refs.Cont; // 由Right组件传输过来的数据
     this.$refs.Cont.addEventListener("mousemove", ev => {
       this.mouseCoor = `${ev.offsetX},${ev.offsetY}`
     });
     document.addEventListener("mouseup", ev => {
-      if (
+      if (  // 点击画布空白位置，视为结束直线连线
         this.selLineType === "StraightLine" &&
         ev.target.localName === "svg" &&
         this.lineDrawing
@@ -807,7 +746,7 @@ export default {
       if (this.selNodeType) {
         this.SEL_NODETYPE("");
       }
-      if (this.clickResize || this.showLineSet) {
+      if (this.clickResize || this.showLineSet) { // 重置画布部分显示的提示点和选框
         this.clickInfo = {};
         this.clickResize = false;
         this.showArrow = false;
@@ -821,7 +760,7 @@ export default {
     document.addEventListener("keydown", ev => {
       switch (ev.keyCode) {
         case 46:
-          if (this.clickInfo.id) {
+          if (this.clickInfo.id) { // 如果有点击对象，则删除该节点以及节点上的连线
             let { id } = this.clickInfo;
             let selType = id.replace(/-.*/, "");
             if (selType === "node") {
@@ -837,7 +776,7 @@ export default {
           }
           break;
         case 27:
-          if (this.lineDrawing && this.selLineType === "LinePoly") {
+          if (this.lineDrawing && this.selLineType === "LinePoly") { // 27 为 esc
             this.drawLineEnd();
             this.$refs.Cont.removeEventListener;
           }
