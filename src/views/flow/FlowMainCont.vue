@@ -2,7 +2,7 @@
 <div>
   <flow-top-tool @type-change="lineTypeChange"></flow-top-tool>  
   <div id="flowMainCont" class="flow-main-cont" ref="Cont">
-    <div style="width:2000px;height:1000px">
+    <div >
       <div 
       id="draw" 
       class="main-bg" 
@@ -275,9 +275,11 @@ export default {
       el.onclick = ev => {
         _this.showArrow = false;
         _this.drawLineEnd();
+        console.log(_this.lineData[el.id])
         if (_this.selLineType === "Mouse") {
           _this.SEL_NODENAME(ev.target.localName);
           _this.UPDATE_NODECONTENT(_this.clickInfo.text);
+          if(_this.selLineType === 'StraightLine'){ // 判断点击的对象不同，传输的数据也不同
           _this.UPDATE_NODECOORDINATE({
             x: {
               x1: _this.lineData[el.id].lineStyle.x1,
@@ -288,6 +290,18 @@ export default {
               y2: _this.nodeData[_this.lineData[el.id].startNode].top
             }
           });
+          }else{
+            _this.UPDATE_NODECOORDINATE({
+              x: {
+              x1: _this.nodeData[_this.lineData[el.id].prevNode].left,
+              y1: _this.nodeData[_this.lineData[el.id].prevNode].top
+            },
+            y: {
+              x2: _this.nodeData[_this.lineData[el.id].startNode].left,
+              y2: _this.nodeData[_this.lineData[el.id].startNode].top
+            }
+            })
+          }
           _this.clickElementId = el.id;
           _this.clickInfo = _this.deepCopy(_this.lineData[el.id]);
           _this.clickInfo.lineStyle.stroke = "#00a8ff";
@@ -337,7 +351,7 @@ export default {
           break;
         case "update":   // 属性设置更新画布
           let id = this.clickElementId;
-          if (val.type !== "line") {
+          if (val.type !== "line" && val.type !== "polyline") {
             if (this.selNodeType !== "") {
               let x = val.left;
               let y = val.top;
@@ -356,13 +370,20 @@ export default {
               });
               this.updateLine();
             }
-          } else { // 更新连线内容
+          } else if(val.type === 'line'){ // 更新直线内容
             this.UPDATE_LINE({
               [id]: {
                 ...this.lineData[id],
                 text: val.content
               }
             });
+          }else { //更新折线内容
+            this.UPDATE_LINE({
+              [id]: {
+                ...this.lineData[id],
+                text: val.content
+              }
+            })
           }
       }
     },

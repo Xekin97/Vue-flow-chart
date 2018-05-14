@@ -5,20 +5,14 @@
 </template>
 
 <script>
-// import FlowTopTool from "./FlowTopTool";
 import FlowMainCont from "./FlowMainCont";
 import { eventBus } from "../../eventBus";
-
-
 export default {
   name: "flow",
   components: {
     FlowMainCont
   },
   methods: {
-    typeChange() {
-
-    },
     resetComponent() {
       eventBus.$emit("resetComponent");
     }

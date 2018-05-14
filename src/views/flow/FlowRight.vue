@@ -7,12 +7,12 @@
             L：<input type="number" ref="newHor"> <br>
             T：<input type="number" ref="newVer"> <br>
             内容：<br><textarea cols="20" rows="2" ref="newCon"></textarea><br>          
-            <button @click="selnode(tab)">创建</button>
+            <button class="newBtn" @click="selnode(tab)">创建</button>
         </div>
         <br>
         <span class="title">节点属性</span>
         <div class="proSet">
-            名称：<span>{{ SVGName }}</span><br><br>
+            名称：<span>{{ SVGName }}</span><br>
             
             <div class="line-form" v-if="clickType === 'line'">
             起点：<span>({{ coordinate.x.x1 }}, {{coordinate.x.y1}})</span> <br>
@@ -26,10 +26,6 @@
             内容：<br><textarea :class="{cantClick: SVGName === '' }" cols="20" rows="2" ref="updateContent" :value="nodeContents" @input="updateNode" ></textarea>
         </div>
         <br>
-        <span class="title">节点搜索</span>
-        <div class="proSet">
-            按内容检索：<br><textarea cols="20" rows="2" v-model="search"></textarea>
-        </div>
     </div>
   </div>
 </template>
@@ -64,7 +60,7 @@ export default {
         this.$refs.hor.setAttribute("disabled", "disabled");
         this.$refs.ver.setAttribute("disabled", "disabled");
         this.$refs.updateContent.setAttribute("disabled", "disabled");
-      } else if (this.SVGName === "直线") {
+      } else if (this.SVGName === "直线" || this.SVGName === "折线") {
         this.clickType = 'line';
         this.$refs.updateContent.removeAttribute("disabled");
       } else {
@@ -113,7 +109,7 @@ export default {
           return "椭圆";
         case "line":
           return "直线";
-        case "polyLine":
+        case "polyline":
           return "折线";
         default:
           return "";
@@ -154,12 +150,12 @@ export default {
         case "line":
           type = "line";
           break;
-        case "polyLine":
-          type = "polyLine";
+        case "polyline":
+          type = "polyline";
         default:
           break;
       }
-      if (type !== 'line' && this.$refs.hor.value && this.$refs.ver.value) {
+      if (type !== 'line' && type !== 'polyline' && this.$refs.hor.value && this.$refs.ver.value) {
         this.SEL_NODETYPE(type);
         this.$emit("onUpdateNode", {
           left: this.$refs.hor.value,
@@ -232,6 +228,10 @@ export default {
       align-items: center;
     }
     .proSet {
+      padding: 5px;
+      .newBtn {
+        width: 50%;
+      }
       input {
         margin-top: 10px;
         width: auto;

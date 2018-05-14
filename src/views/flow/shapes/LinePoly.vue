@@ -44,26 +44,24 @@ export default {
       let points = this.lineStyle.points
       if (points) {
         let arr = points.split(' ')
-        if (arr.length > 2) {
-          let m1 = arr[1].split(',')
-          let m2 = arr[2].split(',')
-          let x1 = +m1[0]
-          let y1 = +m1[1]
-          let x2 = +m2[0]
-          let y2 = +m2[1]
-          let x, y
-          if (y1 === y2) {
-            y = y1
-          } else {
-            y = +((y2 - y1) / 2) + y1
-          }
-          if (x1 === x2) {
-            x = x1
-          } else {
-            x = +((x2 - x1) / 2) + x1
-          }
-          return `translate(${x},${y})`
+        let m1 = arr[0].split(',')
+        let m2 = arr[1].split(',')
+        let x1 = +m1[0]
+        let y1 = +m1[1]
+        let x2 = +m2[0]
+        let y2 = +m2[1]
+        let x, y
+        if (y1 === y2) {
+          y = y1 - 10
+        } else {
+          y = +((y2 + y1) / 2)
         }
+        if (x1 === x2) {
+          x = x1
+        } else {
+          x = +(x1 + x2)/2
+        }
+        return `translate(${x},${y})`
       }
     },
     style () {
@@ -71,32 +69,6 @@ export default {
     },
     shadowStyle () {
       return Object.assign({}, this.defaultStyle, this.defaultShadow, this.lineStyle)
-    }
-  },
-  mounted () {
-    let points = this.lineStyle.points
-    if (points) {
-      let arr = points.split(' ')
-      if (arr.length > 2) {
-        let m1 = arr[1].split(',')
-        let m2 = arr[2].split(',')
-        let x1 = +m1[0]
-        let y1 = +m1[1]
-        let x2 = +m2[0]
-        let y2 = +m2[1]
-        let x, y
-        if (y1 === y2) {
-          y = y1
-        } else {
-          y = +((y2 - y1) / 2) + y1
-        }
-        if (x1 === x2) {
-          x = x1
-        } else {
-          x = +((x2 - x1) / 2) + x1
-        }
-        return `translate(${x},${y})`
-      }
     }
   },
   props: {
